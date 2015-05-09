@@ -1,0 +1,372 @@
+import ddf.minim.*;
+import ddf.minim.spi.*;
+import ddf.minim.ugens.*;
+import processing.serial.*;
+import ddf.minim.analysis.*;
+
+
+Minim minim;
+AudioInput in;
+AudioOutput out;
+AudioRecorder recorder;
+ArrayList<Sampler> cubeSamples;
+ArrayList<MultiChannelBuffer> sampleBuffer;
+Sequencer sequencer;
+
+
+//Variables:
+int cubeToRecord            =   0;
+int averageBpm              =   0;
+int recordingTime           =   0;
+int sleepTime               =   0;
+int bufferLength            =   3;
+int[] cubes                 =   new int [16];
+int[] bpmArray              =   new int [16];
+int inByte                  =   0;
+int hash                    =   35;
+int count                   =   0;
+int beat;
+
+float volumeTreshold        =   10;
+float volumeMix             =   0;
+
+boolean recording           =   false;
+boolean ready               =   false;
+boolean boxIsTapped         =   false;
+boolean copyingStarted      =   false;
+boolean stopSequencer       =   false;
+boolean sequencerIsStopped  =   false;
+boolean[] cubesState        =   new boolean[16];
+
+Serial myPort;
+
+
+
+public int bpm; int bpmOffset;
+
+
+class Sequencer implements Instrument
+{
+  void noteOn( float dur )
+  {
+    if ( cubesState[beat] ){
+      for(int i =0; i < cubes.length; i++){
+        cubeSamples.get(i).stop();
+      }
+      cubeSamples.get(beat).trigger();
+      myPort.write(cubes[beat]);
+    } 
+    
+    
+    println(cubes[beat]);  
+  }
+  
+  void noteOff()
+  {
+
+    //if ( cubesState[(beat+1)%8] )cubeSamples.get(beat).stop();
+    // next beat
+    beat = (beat+1)%8;
+    // set the new tempo
+    out.setTempo( bpm/2); // + bpmOffset );
+    // play this again right now, with a sixteenth note duration
+    if (!stopSequencer){
+      out.playNote( 0, 0.25f, this );
+    }else{
+      sequencerIsStopped = true;
+    }
+  }
+}
+
+
+
+//Programm Start:
+
+
+void setup()
+{
+  size(512, 200);
+ 
+  minim = new Minim(this);
+  println(Serial.list());
+  myPort = new Serial(this, Serial.list()[0], 9600);
+  myPort.clear();
+  myPort.bufferUntil(255);
+  
+  //16 bit 44100khz sample buffer 512 stereo;
+  in = minim.getLineIn(Minim.STEREO, 1024);
+  out = minim.getLineOut();
+
+  cubeSamples = new ArrayList<Sampler>();
+  sampleBuffer = new ArrayList<MultiChannelBuffer>();
+  sequencer = new Sequencer();
+
+  for (int i=0; i < cubes.length; i++) {         
+    cubes[i] = i;
+    sampleBuffer.add(new MultiChannelBuffer( 4, 1024 ));
+    float sampleRate = minim.loadFileIntoBuffer( i + ".wav", sampleBuffer.get(i) );
+    cubeSamples.add(new Sampler(sampleBuffer.get(i), sampleRate, 4));
+    cubeSamples.get(i).patch(out);
+    bpmArray[i] = 60;
+    println("Test Sample I: " + cubes[i]);
+  }
+
+  recorder = minim.createRecorder(in, "bajs.wav", true);
+
+  bpm = 100;
+  beat = 0;
+
+   // start the sequencer
+  out.setTempo( bpm );
+  out.playNote( 0, 0.25f, sequencer );
+  out.mute();
+  textFont(createFont("Arial", 12));
+  
+  //////Start the Arduino Sketch!!!!!!!!!
+  myPort.write('a');
+}
+ 
+void draw()
+{
+  background(0); 
+  stroke(255);
+  for(int i = 0; i < in.left.size()-1; i++)
+  {
+    line(i, 50 + in.left.get(i)*50, i+1, 50 + in.left.get(i+1)*50);
+    line(i, 150 + in.right.get(i)*50, i+1, 150 + in.right.get(i+1)*50);
+  }
+
+  if ( recorder.isRecording() )
+  {
+    text("Currently recording...", 5, 15);
+  }
+  else
+  {
+    text("Not recording.", 5, 15);
+  }
+
+
+  while(recording){
+    if(millis() - recordingTime >= 2000){
+      recorder.endRecord();
+      println("Done recording.");
+      recorder.save();
+      println("Done saving.");
+      recording = false;
+      //Send "recording finished" to Arduino
+      refreshSampleBuffer(cubeToRecord);
+      myPort.write(25);
+      startStepSequencer();
+      myPort.clear();
+      out.unmute();
+    }
+  }
+
+  volumeMix = in.mix.level();
+  volumeMix = int(volumeMix*1000);
+
+  if (boxIsTapped){ 
+    out.mute();
+    stopStepSequencer();
+    waitForVolumeTreshold();
+  }
+
+
+  if (!ready){
+    println("Ready");
+    ready = true;
+    out.unmute();
+//    startAllBeats();
+  }
+}
+ 
+//Wait for serial events 
+void serialEvent(Serial myPort) {
+
+  while (myPort.available() > 0) { 
+  inByte = myPort.read();
+  println(inByte);
+  
+    if (ready){
+    println("In SerialEvent");
+      //copy cubes
+      if(inByte == 42){
+      println("Copying Triggered");
+      copyCubes(myPort.read(), myPort.read());  
+      }
+
+      //recording cube
+      if(inByte == 35 && !boxIsTapped){
+      println("Recording Triggered");
+      boxIsTapped = true;
+      sleepTime = millis();
+      cubeToRecord = myPort.read(); 
+      }
+
+      //trigger cube
+      if(inByte == '/'){
+      println("IR-Sensor Triggered");
+      int cube = myPort.read();
+      int value = myPort.read();
+      print(cube);print('\t');println(value);
+      startBeat(cube, value);
+      }
+
+      //trigger cube off
+      if(inByte == 92){
+      println("IR-Sensor Off");
+      stopBeat(myPort.read());
+      }
+    }  
+  }
+} 
+
+//wait for volume trigger
+void waitForVolumeTreshold(){
+  if((millis() - sleepTime) <= 8000){
+    //println("Waiting and starting wait animation");
+    println("Recording Volume is:");
+    println(volumeMix);
+    if (volumeMix >= volumeTreshold){
+      println("Treshold Reached:");
+      boxIsTapped = false;
+      startRecording();
+    }
+  }else{
+      //send "recording timeout" to Arduino
+      println("Timeout");
+      myPort.write(40);
+      boxIsTapped = false;
+      startStepSequencer();
+      out.unmute();
+  }
+  
+}
+
+//start recording sound
+void startRecording(){
+  //trigger Recording Animation
+
+  recorder = minim.createRecorder(in, cubes[cubeToRecord] + ".wav", true);
+  recordingTime = millis();
+  println("Recording! Psst!! -- Next Volume:");
+  recorder.beginRecord();
+  recording = true;
+  recordingTime = millis();
+  if(recording){
+    //Send "is recording" to Arduino
+    myPort.write(20);
+  }
+
+}
+
+void copyCubes(int cubeNumber1, int cubeNumber2){
+  //out.mute();
+  stopStepSequencer();
+  copyingStarted = true;
+  println("Try to copy from" + cubeNumber1 + "to" + cubeNumber2);
+  // Open a file and read its binary data 
+  byte b[] = loadBytes( cubeNumber1 + ".wav"); 
+  saveBytes(cubeNumber2 + ".wav", b);
+  println("copied! from" + cubeNumber1 + "to" + cubeNumber2);
+  //Send "copying finished" to Arduino
+  myPort.write(30);
+  copyingStarted = false;
+  //out.unmute();
+  refreshSampleBuffer(cubeNumber2);
+  startStepSequencer();
+
+}
+
+
+void startBeat(int cubeNumber, int value){
+  
+  if(!cubesState[cubeNumber]){
+    cubesState[cubeNumber] = true;
+  }
+
+  bpmArray[cubeNumber] = value;
+
+  if(!cubesState[cubeNumber]){
+    cubesState[cubeNumber] = true;
+  }
+  
+  averageBpm = 0;
+  
+  for (int i = 0; i<cubes.length; i++){
+
+    //calc average BPM of cubes
+    if(cubesState[i]){
+      averageBpm += bpmArray[i];
+      count ++;
+    }
+    
+  }
+  
+  bpmOffset = averageBpm/count/2;
+  count = 0;
+  print("bpm is:");
+  println(bpmOffset);
+
+  // use for debugging
+  //cubesState[currentCubeNumber] = true;
+} 
+
+
+
+void stopBeat(int cubeNumber){
+
+  cubesState[cubeNumber] = false;
+
+}
+
+
+void stopAllBeats(){
+
+  for (int i = 0; i<cubes.length; i++){
+    cubesState[i] = false;
+  }
+
+}
+
+void startAllBeats(){
+
+  for (int i = 0; i<cubes.length; i++){
+    cubesState[i] = true;
+  }
+
+}
+
+void stopStepSequencer(){
+
+  stopSequencer = true;
+}
+
+void startStepSequencer(){
+
+  if(sequencerIsStopped){
+    sequencerIsStopped = false;
+    out.playNote( 0, 0.25f, sequencer);
+  }
+  stopSequencer = false;
+}
+
+
+//release recorder 
+void stop()
+{
+  // always close Minim audio classes when you are done with them
+  in.close();
+  out.close();
+  // always stop Minim before exiting
+  minim.stop();
+  super.stop();
+}
+
+
+void refreshSampleBuffer(int cubeNumber){
+
+  minim.loadFileIntoBuffer(cubeNumber + ".wav", sampleBuffer.get(cubeNumber));
+  cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), cubeSamples.get(cubeNumber).sampleRate());
+
+}
