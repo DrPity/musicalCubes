@@ -352,9 +352,9 @@ void startStepSequencer()
 
 void setPitchShift( int cubeNumber )
 {
-    float semiTone      = map (distanceArray[cubeNumber], 0, 255, 0, semiTones.length);
-    float noteHz        = exp( semiTone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
-    float  colorCube    = map (semiTone, 0, semiTones.length, 25, 230);
+    float   semiTone    = map (distanceArray[cubeNumber], 0, 255, 0, semiTones.length);
+    float   noteHz      = exp( semiTone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
+    float   colorCube   = map (semiTone, 0, semiTones.length, 25, 230);
     // println("note: "+note);
     if(semiTone == 0)
     {
