@@ -33,6 +33,7 @@ int       bufferLength              =   3;
 int[]     cubes                     =   new int [8];
 int[]     distanceArray             =   new int [8];
 int[]     currentSemitoneOf         =   new int [8];
+int[]     currentSampleRateOf       =   new int [8];
 int[]     distanceReferenceArray    =   new int [8];
 int[]     semitones                 =   {-5, -2, 0, 2, 5, 7};
 int       inByte                    =   0;
@@ -51,7 +52,7 @@ byte      exPr                      =   33;
 byte      gtThan                    =   62;
 byte      questionMark              =   63;
 
-float     volumeTreshold            =   60;
+float     volumeTreshold            =   80;
 float     volumeMix                 =   0;
 
 //Debugging
@@ -344,22 +345,26 @@ void startStepSequencer()
 
 void setPitchShift( int cubeNumber )
 {
-    int   scalePosition = map (distanceArray[cubeNumber], 0, 255, 0, semitones.length)
+  //TODO: Fix so that the pitch is only really changed when the sample is triggered. This is to avoid that the pitch changes while the sample is playing.
+  //Could  posssibly be made by saving what pitch the sample should have from this function. Then actually changing the samplerate in noteOn.
+    int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length);
     int   semitone   = semitones[scalePosition];
     if(semitone == currentSemitoneOf[cubeNumber]){//If we needn't change the pitch then exit this function
       return;
     }
     currentSemitoneOf[cubeNumber] = semitone;
     float   noteHz      = exp( semitone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
-    float   colorCube   = map (scalePosition, 0, semiTones.length, 25, 230);
+    float   colorCube   = map (scalePosition, 0, semitones.length, 25, 230);
     // println("note: "+note);
-    if(semiTones[scalePosition] == 0)
+    if(semitone == 0)
     {
-        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
+//        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
+        currentSampleRateOf[cubeNumber] = DEFAULTSAMPLERATE;
         println("cube [ " + cubeNumber + " ]" +DEFAULTSAMPLERATE);
-    }else if(semiTones[scalePosition] != 0)
+    }else if(semitone != 0)
     {
-        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
+//        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
+        currentSampleRateOf[cubeNumber] = noteHz;
         println("cube [ " + cubeNumber + " ] " + "new sampleRate: " +noteHz + "Hz");
     }
 
