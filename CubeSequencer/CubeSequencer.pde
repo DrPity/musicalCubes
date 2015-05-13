@@ -32,8 +32,9 @@ int       sleepTime                 =   0;
 int       bufferLength              =   3;
 int[]     cubes                     =   new int [8];
 int[]     distanceArray             =   new int [8];
+int[]     currentSemitoneOf         =   new int [8];
 int[]     distanceReferenceArray    =   new int [8];
-int[]     semiTones                 =   {-5, -2, 0, 2, 5, 7};
+int[]     semitones                 =   {-5, -2, 0, 2, 5, 7};
 int       inByte                    =   0;
 int       count                     =   0;
 int       beat;
@@ -50,7 +51,7 @@ byte      exPr                      =   33;
 byte      gtThan                    =   62;
 byte      questionMark              =   63;
 
-float     volumeTreshold            =   50;
+float     volumeTreshold            =   60;
 float     volumeMix                 =   0;
 
 //Debugging
@@ -179,7 +180,7 @@ void serialEvent( Serial myPort ) {
   
     println("SerialEvent triggered");
 
-    while ( myPort.available() > 0 ) 
+    while ( myPort.available() > 3 ) 
 	{ 
         inByte = myPort.read();
 		////For debug purpose 
@@ -278,27 +279,13 @@ void startBeat( int cubeNumber, int value )
     if( !cubesState[cubeNumber] )
     {
         cubesState[cubeNumber] = true;
-	}
-
-	distanceArray[cubeNumber] = value;
-    
-    for ( int i = 0; i<cubes.length; i++ )
-    {
-        // int distance = distanceArray[i] - distanceReferenceArray[i];
-        if( cubesState[i] )
-        {
-            setPitchShift( i );
-            count ++;
-        } 
     }
 
-    triggerEndTime = millis();
-    long runtime = triggerEndTime - triggerStartTime;
-    println("---  sampleRateCalcTime: "+ runtime);
-    count = 0;
-
-    // use for debugging
-    // cubesState[currentCubeNumber] = true;
+    distanceArray[cubeNumber] = value;
+    if( cubesState[cubeNumber] )
+    {
+        setPitchShift( cubeNumber );
+    }
 }
 
 //---------------------------------------------------------------------
@@ -357,15 +344,20 @@ void startStepSequencer()
 
 void setPitchShift( int cubeNumber )
 {
-    float   semiTone    = map (distanceArray[cubeNumber], 0, 255, 0, semiTones.length);
-    float   noteHz      = exp( semiTone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
-    float   colorCube   = map (semiTone, 0, semiTones.length, 25, 230);
+    int   scalePosition = map (distanceArray[cubeNumber], 0, 255, 0, semitones.length)
+    int   semitone   = semitones[scalePosition];
+    if(semitone == currentSemitoneOf[cubeNumber]){//If we needn't change the pitch then exit this function
+      return;
+    }
+    currentSemitoneOf[cubeNumber] = semitone;
+    float   noteHz      = exp( semitone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
+    float   colorCube   = map (scalePosition, 0, semiTones.length, 25, 230);
     // println("note: "+note);
-    if(semiTone == 0)
+    if(semiTones[scalePosition] == 0)
     {
         cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
         println("cube [ " + cubeNumber + " ]" +DEFAULTSAMPLERATE);
-    }else if(semiTone != 0)
+    }else if(semiTones[scalePosition] != 0)
     {
         cubeSamples.get(cubeNumber).setSampleRate(noteHz);
         println("cube [ " + cubeNumber + " ] " + "new sampleRate: " +noteHz + "Hz");
