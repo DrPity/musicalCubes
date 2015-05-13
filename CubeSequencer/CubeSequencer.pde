@@ -50,7 +50,7 @@ byte      exPr                      =   33;
 byte      gtThen                    =   62;
 byte      questionMark              =   63;
 
-float     volumeTreshold            =   30;
+float     volumeTreshold            =   50;
 float     volumeMix                 =   0;
 
 //Debugging
@@ -79,7 +79,7 @@ void setup()
 		println("[" + i + "]" + Serial.list()[i]);
 	}
 
-	myPort  = new Serial(this, Serial.list()[13], 9600);  
+	myPort  = new Serial(this, Serial.list()[0], 9600);  
 	minim   = new Minim(this);
 	worker  = new Worker(1);
 	worker.start();
@@ -176,13 +176,15 @@ void draw()
 //---------------------------------------------------------------------
 
 void serialEvent( Serial myPort ) {
+  
+    println("SerialEvent triggered");
 
     while ( myPort.available() > 0 ) 
 	{ 
         inByte = myPort.read();
 		////For debug purpose 
-		// print("Time: "+ millis() + " - ReceivedByte: " + inByte);
-		// println();
+//		 print("Time: "+ millis() + " - ReceivedByte: " + inByte);
+//		 println();
 		boolean isReadyForPayload = ready && inByte == hash;
         if (isReadyForPayload)
         {
@@ -194,7 +196,7 @@ void serialEvent( Serial myPort ) {
                 println("Copying Triggered");
 		  		worker.copyCubeNr1 = myPort.read();
 		  		worker.copyCubeNr2 = myPort.read();
-				// print("copyCubeNr1: "+ worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
+				print("copyCubeNr1: "+ worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
 				println();
 				worker.startCopying = true;
             }
@@ -212,8 +214,8 @@ void serialEvent( Serial myPort ) {
 		  	//trigger cube
 		  	if( payloadByte == frSlash )
 		  	{
-                triggerStartTime = millis();
-                println("cube Triggered at:" + triggerStartTime);
+                                triggerStartTime = millis();
+                                println("cube Triggered at:" + triggerStartTime);
 		  		int cube = myPort.read();
 		  		lastTriggeredCube = (byte)  cube;
 		  		int value = myPort.read();
@@ -223,6 +225,8 @@ void serialEvent( Serial myPort ) {
 		  	//trigger cube off
 		  	if( payloadByte == bkSlash )
 		  	{
+                                println("cube turned off at:" + millis());
+                                
 		  		int cube = myPort.read();
 		  		stopBeat(cube);
 		  		byte [] bytes = {hash, bkSlash, byte(cube)};
