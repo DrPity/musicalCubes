@@ -47,7 +47,7 @@ byte      lBracket                  =   91;
 byte      rBracket                  =   93;
 byte      star                      =   42;
 byte      exPr                      =   33;
-byte      gtThen                    =   62;
+byte      gtThan                    =   62;
 byte      questionMark              =   63;
 
 float     volumeTreshold            =   50;
@@ -194,6 +194,7 @@ void serialEvent( Serial myPort ) {
             if( payloadByte == star )
             {
                 println("Copying Triggered");
+                                stopStepSequencer();
 		  		worker.copyCubeNr1 = myPort.read();
 		  		worker.copyCubeNr2 = myPort.read();
 				print("copyCubeNr1: "+ worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
@@ -234,7 +235,7 @@ void serialEvent( Serial myPort ) {
 		  	}
 
 		  	//TODO: MessageType PitchColor == ?+colorByte
-		  	if( payloadByte == gtThen ){
+		  	if( payloadByte == gtThan ){
 		  		startStepSequencer();
 		  	}
         }  
