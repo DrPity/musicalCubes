@@ -11,7 +11,7 @@ class Sequencer implements Instrument
             cubeSamples.get(i).stop();
             }
         cubeSamples.get(beat).trigger();
-        byte [] bytes = {hash, frSlash, byte(cubes[beat]), effect};
+        byte [] bytes = {hash, frSlash, byte(cubes[beat]), 127};
         sendSerial(bytes);
         } 
     }
