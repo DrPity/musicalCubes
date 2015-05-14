@@ -32,8 +32,10 @@ int       sleepTime                 =   0;
 int       bufferLength              =   3;
 int[]     cubes                     =   new int [8];
 int[]     distanceArray             =   new int [8];
+int[]     currentSemitoneOf         =   new int [8];
+int[]     currentSampleRateOf       =   new int [8];
 int[]     distanceReferenceArray    =   new int [8];
-int[]     semiTones                 =   {-5, -2, 0, 2, 5, 7};
+int[]     semitones                 =   {-5, -2, 0, 2, 5, 7};
 int       inByte                    =   0;
 int       count                     =   0;
 int       beat;
@@ -47,10 +49,10 @@ byte      lBracket                  =   91;
 byte      rBracket                  =   93;
 byte      star                      =   42;
 byte      exPr                      =   33;
-byte      gtThen                    =   62;
+byte      gtThan                    =   62;
 byte      questionMark              =   63;
 
-float     volumeTreshold            =   30;
+float     volumeTreshold            =   80;
 float     volumeMix                 =   0;
 
 //Debugging
@@ -79,7 +81,7 @@ void setup()
 		println("[" + i + "]" + Serial.list()[i]);
 	}
 
-	myPort  = new Serial(this, Serial.list()[13], 9600);  
+	myPort  = new Serial(this, Serial.list()[0], 9600);  
 	minim   = new Minim(this);
 	worker  = new Worker(1);
 	worker.start();
@@ -176,13 +178,15 @@ void draw()
 //---------------------------------------------------------------------
 
 void serialEvent( Serial myPort ) {
+  
+    println("SerialEvent triggered");
 
-    while ( myPort.available() > 0 ) 
+    while ( myPort.available() > 3 ) 
 	{ 
         inByte = myPort.read();
 		////For debug purpose 
-		// print("Time: "+ millis() + " - ReceivedByte: " + inByte);
-		// println();
+//		 print("Time: "+ millis() + " - ReceivedByte: " + inByte);
+//		 println();
 		boolean isReadyForPayload = ready && inByte == hash;
         if (isReadyForPayload)
         {
@@ -192,9 +196,10 @@ void serialEvent( Serial myPort ) {
             if( payloadByte == star )
             {
                 println("Copying Triggered");
+                                stopStepSequencer();
 		  		worker.copyCubeNr1 = myPort.read();
 		  		worker.copyCubeNr2 = myPort.read();
-				// print("copyCubeNr1: "+ worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
+				print("copyCubeNr1: "+ worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
 				println();
 				worker.startCopying = true;
             }
@@ -212,8 +217,8 @@ void serialEvent( Serial myPort ) {
 		  	//trigger cube
 		  	if( payloadByte == frSlash )
 		  	{
-                triggerStartTime = millis();
-                println("cube Triggered at:" + triggerStartTime);
+                                triggerStartTime = millis();
+                                println("cube Triggered at:" + triggerStartTime);
 		  		int cube = myPort.read();
 		  		lastTriggeredCube = (byte)  cube;
 		  		int value = myPort.read();
@@ -223,6 +228,8 @@ void serialEvent( Serial myPort ) {
 		  	//trigger cube off
 		  	if( payloadByte == bkSlash )
 		  	{
+                                println("cube turned off at:" + millis());
+                                
 		  		int cube = myPort.read();
 		  		stopBeat(cube);
 		  		byte [] bytes = {hash, bkSlash, byte(cube)};
@@ -230,7 +237,7 @@ void serialEvent( Serial myPort ) {
 		  	}
 
 		  	//TODO: MessageType PitchColor == ?+colorByte
-		  	if( payloadByte == gtThen ){
+		  	if( payloadByte == gtThan ){
 		  		startStepSequencer();
 		  	}
         }  
@@ -273,27 +280,13 @@ void startBeat( int cubeNumber, int value )
     if( !cubesState[cubeNumber] )
     {
         cubesState[cubeNumber] = true;
-	}
-
-	distanceArray[cubeNumber] = value;
-    
-    for ( int i = 0; i<cubes.length; i++ )
-    {
-        // int distance = distanceArray[i] - distanceReferenceArray[i];
-        if( cubesState[i] )
-        {
-            setPitchShift( i );
-            count ++;
-        } 
     }
 
-    triggerEndTime = millis();
-    long runtime = triggerEndTime - triggerStartTime;
-    println("---  sampleRateCalcTime: "+ runtime);
-    count = 0;
-
-    // use for debugging
-    // cubesState[currentCubeNumber] = true;
+    distanceArray[cubeNumber] = value;
+    if( cubesState[cubeNumber] )
+    {
+        setPitchShift( cubeNumber );
+    }
 }
 
 //---------------------------------------------------------------------
@@ -352,17 +345,26 @@ void startStepSequencer()
 
 void setPitchShift( int cubeNumber )
 {
-    float   semiTone    = map (distanceArray[cubeNumber], 0, 255, 0, semiTones.length);
-    float   noteHz      = exp( semiTone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
-    float   colorCube   = map (semiTone, 0, semiTones.length, 25, 230);
+  //TODO: Fix so that the pitch is only really changed when the sample is triggered. This is to avoid that the pitch changes while the sample is playing.
+  //Could  posssibly be made by saving what pitch the sample should have from this function. Then actually changing the samplerate in noteOn.
+    int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length);
+    int   semitone   = semitones[scalePosition];
+    if(semitone == currentSemitoneOf[cubeNumber]){//If we needn't change the pitch then exit this function
+      return;
+    }
+    currentSemitoneOf[cubeNumber] = semitone;
+    float   noteHz      = exp( semitone * log(2)/12 ) * ( DEFAULTSAMPLERATE );
+    float   colorCube   = map (scalePosition, 0, semitones.length, 25, 230);
     // println("note: "+note);
-    if(semiTone == 0)
+    if(semitone == 0)
     {
-        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
+//        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
+        currentSampleRateOf[cubeNumber] = DEFAULTSAMPLERATE;
         println("cube [ " + cubeNumber + " ]" +DEFAULTSAMPLERATE);
-    }else if(semiTone != 0)
+    }else if(semitone != 0)
     {
-        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
+//        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
+        currentSampleRateOf[cubeNumber] = noteHz;
         println("cube [ " + cubeNumber + " ] " + "new sampleRate: " +noteHz + "Hz");
     }
 

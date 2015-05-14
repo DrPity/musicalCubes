@@ -6,13 +6,15 @@ class Sequencer implements Instrument
     {
         if ( cubesState[beat] )
         {
-            for(int i =0; i < cubes.length; i++)
+            for(int i =0; i < cubes.length; i++)//Stop other cubes if they are making sounds.
             {
             cubeSamples.get(i).stop();
             }
-        cubeSamples.get(beat).trigger();
-        byte [] bytes = {hash, frSlash, byte(cubes[beat]), effect};
-        sendSerial(bytes);
+            cubeSamples.get(beat).setSampleRate(currentSampleRateOf[beat]);
+            cubeSamples.get(beat).trigger();
+            byte   colorCube   = (byte) map (currentSemitoneOf[beat], 0, semitones.length, 25, 230);
+            byte [] bytes = {hash, frSlash, byte(cubes[beat]), colorCube};
+            sendSerial(bytes);
         } 
     }
 
