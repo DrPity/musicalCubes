@@ -74,91 +74,91 @@ static final int    DEFAULTSAMPLERATE           = 44100;
 
 
 void setup() {
-  size(512, 200);
-  for (int i = 0; i < Serial.list().length; ++i) {
-    println("[" + i + "]" + Serial.list()[i]);
-  }
+    size(512, 200);
+    for (int i = 0; i < Serial.list().length; ++i) {
+        println("[" + i + "]" + Serial.list()[i]);
+    }
 
-  myPort  = new Serial(this, Serial.list()[0], 9600);
-  minim   = new Minim(this);
-  worker  = new Worker(1);
-  worker.start();
-  myPort.clear();
-  myPort.bufferUntil('\n');
+    myPort  = new Serial(this, Serial.list()[0], 9600);
+    minim   = new Minim(this);
+    worker  = new Worker(1);
+    worker.start();
+    myPort.clear();
+    myPort.bufferUntil('\n');
 
-  //16 bit 44100khz sample buffer 512 stereo;
-  in  = minim.getLineIn(Minim.STEREO, 1024);
-  out = minim.getLineOut();
+    //16 bit 44100khz sample buffer 512 stereo;
+    in  = minim.getLineIn(Minim.STEREO, 1024);
+    out = minim.getLineOut();
 
-  cubeSamples   = new ArrayList<Sampler>();
-  sampleBuffer  = new ArrayList<MultiChannelBuffer>();
-  sequencer     = new Sequencer();
+    cubeSamples   = new ArrayList<Sampler>();
+    sampleBuffer  = new ArrayList<MultiChannelBuffer>();
+    sequencer     = new Sequencer();
 
-  for (int i = 0; i < cubes.length; i++) {
-    cubes[i]  = i;
-    sampleBuffer.add(new MultiChannelBuffer(4, 1024));
-    float sampleRate = minim.loadFileIntoBuffer( i + ".wav", sampleBuffer.get(i) );
-    cubeSamples.add(new Sampler(sampleBuffer.get(i), sampleRate, 4));
-    cubeSamples.get(i).patch(out);
-    println("Load test sample: " + cubes[i]);
-  }
+    for (int i = 0; i < cubes.length; i++) {
+        cubes[i]  = i;
+        sampleBuffer.add(new MultiChannelBuffer(4, 1024));
+        float sampleRate = minim.loadFileIntoBuffer( i + ".wav", sampleBuffer.get(i) );
+        cubeSamples.add(new Sampler(sampleBuffer.get(i), sampleRate, 4));
+        cubeSamples.get(i).patch(out);
+        println("Load test sample: " + cubes[i]);
+    }
 
-  recorder = minim.createRecorder(in, "bajs.wav", true);
+    recorder = minim.createRecorder(in, "bajs.wav", true);
 
-  bpm = 130;
-  beat = 0;
+    bpm = 130;
+    beat = 0;
 
-  // start the sequencer
-  out.setTempo( bpm );
-  out.playNote( 0, 0.25f, sequencer );
-  out.mute();
-  textFont(createFont( "Arial", 12 ));
+    // start the sequencer
+    out.setTempo( bpm );
+    out.playNote( 0, 0.25f, sequencer );
+    out.mute();
+    textFont(createFont( "Arial", 12 ));
 
-  //send Arduino handshake
-  byte [] bytes = {'a'};
-  sendSerial(bytes);
+    //send Arduino handshake
+    byte [] bytes = {'a'};
+    sendSerial(bytes);
 }
 
 //---------------------------------------------------------------------
 
 void draw() {
 
-  background(0);
-  stroke(255);
+    background(0);
+    stroke(255);
 
-  for ( int i = 0; i < in.left.size() - 1; i++ ) {
-    line(i, 50 + in.left.get(i) * 50, i + 1, 50 + in.left.get(i + 1) * 50);
-    line(i, 150 + in.right.get(i) * 50, i + 1, 150 + in.right.get(i + 1) * 50);
-  }
-
-  if ( recorder.isRecording() ) {
-    text("Currently recording...", 5, 15);
-  } else {
-    text("Not recording.", 5, 15);
-  }
-
-  while ( recording ) {
-    if (millis() - recordingTime >= 2000) {
-      worker.endRecordingVoice = true;
+    for ( int i = 0; i < in.left.size() - 1; i++ ) {
+        line(i, 50 + in.left.get(i) * 50, i + 1, 50 + in.left.get(i + 1) * 50);
+        line(i, 150 + in.right.get(i) * 50, i + 1, 150 + in.right.get(i + 1) * 50);
     }
-  }
 
-  volumeMix = in.mix.level();
-  volumeMix = int(volumeMix * 1000);
+    if ( recorder.isRecording() ) {
+        text("Currently recording...", 5, 15);
+    } else {
+        text("Not recording.", 5, 15);
+    }
 
-  if ( boxIsTapped ) {
-    out.mute();
-    stopStepSequencer();
-    waitForVolumeTreshold();
-  }
+    while ( recording ) {
+        if (millis() - recordingTime >= 2000) {
+            worker.endRecordingVoice = true;
+        }
+    }
 
-  if ( !ready ) {
-    println("Ready");
-    ready = true;
-    out.unmute();
-    ////For debugging
-    // startAllBeats();
-  }
+    volumeMix = in.mix.level();
+    volumeMix = int(volumeMix * 1000);
+
+    if ( boxIsTapped ) {
+        out.mute();
+        stopStepSequencer();
+        waitForVolumeTreshold();
+    }
+
+    if ( !ready ) {
+        println("Ready");
+        ready = true;
+        out.unmute();
+        ////For debugging
+        // startAllBeats();
+    }
 }
 
 //---------------------------------------------------------------------
@@ -169,61 +169,61 @@ void serialEvent( Serial myPort ) {
 
 //    println("SerialEvent triggered");
 
-  while ( myPort.available() > 3 ) {
-    inByte = myPort.read();
-    ////For debug purpose
+    while ( myPort.available() > 3 ) {
+        inByte = myPort.read();
+        ////For debug purpose
 //       print("Time: "+ millis() + " - ReceivedByte: " + inByte);
 //       println();
-    boolean isReadyForPayload = ready && inByte == hash;
-    if (isReadyForPayload) {
-      int payloadByte = myPort.read();
+        boolean isReadyForPayload = ready && inByte == hash;
+        if (isReadyForPayload) {
+            int payloadByte = myPort.read();
 
-      //copy cubes
-      if ( payloadByte == star ) {
-        println("Copying Triggered");
-        stopStepSequencer();
-        worker.copyCubeNr1 = myPort.read();
-        worker.copyCubeNr2 = myPort.read();
-        print("copyCubeNr1: " + worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
-        println();
-        worker.startCopying = true;
-      }
+            //copy cubes
+            if ( payloadByte == star ) {
+                println("Copying Triggered");
+                stopStepSequencer();
+                worker.copyCubeNr1 = myPort.read();
+                worker.copyCubeNr2 = myPort.read();
+                print("copyCubeNr1: " + worker.copyCubeNr1 + " copyCubeNr2: " + worker.copyCubeNr2);
+                println();
+                worker.startCopying = true;
+            }
 
-      //recording cube
-      if ( payloadByte == lBracket && !boxIsTapped ) {
-        println("Recording Triggered");
-        boxIsTapped = true;
-        sleepTime = millis();
-        cubeToRecord = myPort.read();
-        lastTriggeredCube = (byte) cubeToRecord;
-      }
+            //recording cube
+            if ( payloadByte == lBracket && !boxIsTapped ) {
+                println("Recording Triggered");
+                boxIsTapped = true;
+                sleepTime = millis();
+                cubeToRecord = myPort.read();
+                lastTriggeredCube = (byte) cubeToRecord;
+            }
 
-      //trigger cube
-      if ( payloadByte == frSlash ) {
-        triggerStartTime = millis();
-        println("cube Triggered at:" + triggerStartTime);
-        int cube = myPort.read();
-        lastTriggeredCube = (byte)  cube;
-        int value = myPort.read();
-        startBeat(cube, value);
-      }
+            //trigger cube
+            if ( payloadByte == frSlash ) {
+                triggerStartTime = millis();
+                println("cube Triggered at:" + triggerStartTime);
+                int cube = myPort.read();
+                lastTriggeredCube = (byte)  cube;
+                int value = myPort.read();
+                startBeat(cube, value);
+            }
 
-      //trigger cube off
-      if ( payloadByte == bkSlash ) {
-        println("cube turned off at:" + millis());
+            //trigger cube off
+            if ( payloadByte == bkSlash ) {
+                println("cube turned off at:" + millis());
 
-        int cube = myPort.read();
-        stopBeat(cube);
-        byte [] bytes = {hash, bkSlash, byte(cube)};
-        sendSerial(bytes);
-      }
+                int cube = myPort.read();
+                stopBeat(cube);
+                byte [] bytes = {hash, bkSlash, byte(cube)};
+                sendSerial(bytes);
+            }
 
-      //TODO: MessageType PitchColor == ?+colorByte
-      if ( payloadByte == gtThan ) {
-        startStepSequencer();
-      }
+            //TODO: MessageType PitchColor == ?+colorByte
+            if ( payloadByte == gtThan ) {
+                startStepSequencer();
+            }
+        }
     }
-  }
 }
 
 //---------------------------------------------------------------------
@@ -231,21 +231,21 @@ void serialEvent( Serial myPort ) {
 //---------------------------------------------------------------------
 
 void waitForVolumeTreshold() {
-  if ((millis() - sleepTime) <= 8000) {
-    if (volumeMix >= volumeTreshold) {
-      println("Treshold Reached:");
-      boxIsTapped = false;
-      worker.recordVoice = true;
+    if ((millis() - sleepTime) <= 8000) {
+        if (volumeMix >= volumeTreshold) {
+            println("Treshold Reached:");
+            boxIsTapped = false;
+            worker.recordVoice = true;
+        }
+    } else {
+        //send "recording timeout" to Arduino
+        println("Timeout");
+        byte [] bytes = { hash, exPr, lastTriggeredCube };
+        sendSerial(bytes);
+        boxIsTapped = false;
+        startStepSequencer();
+        out.unmute();
     }
-  } else {
-    //send "recording timeout" to Arduino
-    println("Timeout");
-    byte [] bytes = { hash, exPr, lastTriggeredCube };
-    sendSerial(bytes);
-    boxIsTapped = false;
-    startStepSequencer();
-    out.unmute();
-  }
 
 }
 
@@ -254,14 +254,14 @@ void waitForVolumeTreshold() {
 //---------------------------------------------------------------------
 
 void startBeat( int cubeNumber, int value ) {
-  if ( !cubesState[cubeNumber] ) {
-    cubesState[cubeNumber] = true;
-  }
+    if ( !cubesState[cubeNumber] ) {
+        cubesState[cubeNumber] = true;
+    }
 
-  distanceArray[cubeNumber] = value;
-  if ( cubesState[cubeNumber] ) {
-    setPitchShift( cubeNumber );
-  }
+    distanceArray[cubeNumber] = value;
+    if ( cubesState[cubeNumber] ) {
+        setPitchShift( cubeNumber );
+    }
 }
 
 //---------------------------------------------------------------------
@@ -269,9 +269,9 @@ void startBeat( int cubeNumber, int value ) {
 //---------------------------------------------------------------------
 
 void startAllBeats() {
-  for (int i = 0; i < cubes.length; i++) {
-    cubesState[i] = true;
-  }
+    for (int i = 0; i < cubes.length; i++) {
+        cubesState[i] = true;
+    }
 }
 
 //---------------------------------------------------------------------
@@ -279,7 +279,7 @@ void startAllBeats() {
 //---------------------------------------------------------------------
 
 void stopBeat( int cubeNumber ) {
-  cubesState[cubeNumber] = false;
+    cubesState[cubeNumber] = false;
 }
 
 //---------------------------------------------------------------------
@@ -287,9 +287,9 @@ void stopBeat( int cubeNumber ) {
 //---------------------------------------------------------------------
 
 void stopAllBeats() {
-  for (int i = 0; i < cubes.length; i++) {
-    cubesState[i] = false;
-  }
+    for (int i = 0; i < cubes.length; i++) {
+        cubesState[i] = false;
+    }
 }
 
 //---------------------------------------------------------------------
@@ -297,7 +297,7 @@ void stopAllBeats() {
 //---------------------------------------------------------------------
 
 void stopStepSequencer() {
-  stopSequencer = true;
+    stopSequencer = true;
 }
 
 //---------------------------------------------------------------------
@@ -305,38 +305,38 @@ void stopStepSequencer() {
 //---------------------------------------------------------------------
 
 void startStepSequencer() {
-  if ( sequencerIsStopped ) {
-    sequencerIsStopped = false;
-    out.playNote( 0, 0.25f, sequencer);
-  }
-  stopSequencer = false;
+    if ( sequencerIsStopped ) {
+        sequencerIsStopped = false;
+        out.playNote( 0, 0.25f, sequencer);
+    }
+    stopSequencer = false;
 }
 
 
 void setPitchShift( int cubeNumber ) {
-  int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length - 1);
-  println("seeting scaleposiition for " + cubeNumber + " to " + scalePosition);
-  int   semitone   = semitones[scalePosition];
-  if (semitone == currentSemitoneOf[cubeNumber]) { //If we needn't change the pitch then exit this function
-    return;
-  }
-  currentSemitoneOf[cubeNumber] = semitone;
-  float   noteHz      = exp( semitone * log(2) / 12 ) * ( DEFAULTSAMPLERATE );
-  float   colorCube   = map (scalePosition, 0, semitones.length, 25, 230);
-  // println("note: "+note);
-  if (semitone == 0) {
+    int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length - 1);
+    println("seeting scaleposiition for " + cubeNumber + " to " + scalePosition);
+    int   semitone   = semitones[scalePosition];
+    if (semitone == currentSemitoneOf[cubeNumber]) { //If we needn't change the pitch then exit this function
+        return;
+    }
+    currentSemitoneOf[cubeNumber] = semitone;
+    float   noteHz      = exp( semitone * log(2) / 12 ) * ( DEFAULTSAMPLERATE );
+    float   colorCube   = map (scalePosition, 0, semitones.length, 25, 230);
+    // println("note: "+note);
+    if (semitone == 0) {
 //        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
-    currentSampleRateOf[cubeNumber] = DEFAULTSAMPLERATE;
-    println("cube [ " + cubeNumber + " ]" + DEFAULTSAMPLERATE);
-  } else if (semitone != 0) {
+        currentSampleRateOf[cubeNumber] = DEFAULTSAMPLERATE;
+        println("cube [ " + cubeNumber + " ]" + DEFAULTSAMPLERATE);
+    } else if (semitone != 0) {
 //        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
-    currentSampleRateOf[cubeNumber] = noteHz;
-    println("cube [ " + cubeNumber + " ] " + "new sampleRate: " + noteHz + "Hz");
-  }
+        currentSampleRateOf[cubeNumber] = noteHz;
+        println("cube [ " + cubeNumber + " ] " + "new sampleRate: " + noteHz + "Hz");
+    }
 
-  //TODO: Check if this are the right commands to be send
-  byte [] bytes = {hash, questionMark, byte(cubeNumber), byte(colorCube)};
-  sendSerial(bytes);
+    //TODO: Check if this are the right commands to be send
+    byte [] bytes = {hash, questionMark, byte(cubeNumber), byte(colorCube)};
+    sendSerial(bytes);
 }
 
 
@@ -345,12 +345,12 @@ void setPitchShift( int cubeNumber ) {
 //---------------------------------------------------------------------
 
 void stop() {
-  // always close Minim audio classes when you are done with them
-  in.close();
-  out.close();
-  // always stop Minim before exiting
-  minim.stop();
-  super.stop();
+    // always close Minim audio classes when you are done with them
+    in.close();
+    out.close();
+    // always stop Minim before exiting
+    minim.stop();
+    super.stop();
 }
 
 //---------------------------------------------------------------------
@@ -358,8 +358,8 @@ void stop() {
 //---------------------------------------------------------------------
 
 void sendSerial( byte[] bytes ) {
-  for (int i = 0; i < bytes.length; ++i) {
-    myPort.write(bytes[i]);
-  }
-  myPort.write('\n');
+    for (int i = 0; i < bytes.length; ++i) {
+        myPort.write(bytes[i]);
+    }
+    myPort.write('\n');
 }
