@@ -1,11 +1,10 @@
-class Worker extends Thread
-{
+class Worker extends Thread {
 
     private int wait;
     public int copyCubeNr1;
     public int copyCubeNr2;
     static final int NUMBEROFTIMERS = 6;
-    
+
     private boolean running;
     public boolean recordVoice;
     public boolean endRecordingVoice;
@@ -16,8 +15,7 @@ class Worker extends Thread
 
 // ------------------------------------------------------------------------------------
 
-    Worker ( int _wait )
-    {
+    Worker ( int _wait ) {
         wait                = _wait;
         recordVoice         = false;
         endRecordingVoice   = false;
@@ -29,8 +27,7 @@ class Worker extends Thread
 
 // ------------------------------------------------------------------------------------
 
-    public void start () 
-    {
+    public void start () {
         running = true;
         println("Starting thread (will execute every " + wait + " milliseconds.)");
         super.start();
@@ -38,10 +35,8 @@ class Worker extends Thread
 
 // ------------------------------------------------------------------------------------
 
-    public void run () 
-    {
-        while (running) 
-        {
+    public void run () {
+        while (running) {
             sleep(wait);
             checkBooleans();
         }
@@ -51,30 +46,25 @@ class Worker extends Thread
 
 // ------------------------------------------------------------------------------------
 
-  //On quit()
-  public void quit() 
-  {
-    System.out.println("Quitting.");
-    running = false;  // Setting running to false ends the loop in run()
-    interrupt();
-}
+    //On quit()
+    public void quit() {
+        System.out.println("Quitting.");
+        running = false;  // Setting running to false ends the loop in run()
+        interrupt();
+    }
 
 // ------------------------------------------------------------------------------------
 
-    private void sleep( int sleepTime )
-    {
-        try 
-        {
+    private void sleep( int sleepTime ) {
+        try {
             sleep((long)(sleepTime));
-        }catch ( Exception e ) 
-        {
+        } catch ( Exception e ) {
         }
 
     }
 
 
-    public void refreshSampleBuffer(int cubeNumber)
-    {
+    public void refreshSampleBuffer(int cubeNumber) {
 
         minim.loadFileIntoBuffer(cubeNumber + ".wav", sampleBuffer.get(cubeNumber));
         cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), cubeSamples.get(cubeNumber).sampleRate());
@@ -85,16 +75,15 @@ class Worker extends Thread
 //copy .wav
 //---------------------------------------------------------------------
 
-    public void copyCubes( int cubeNumber1, int cubeNumber2 )
-    {
+    public void copyCubes( int cubeNumber1, int cubeNumber2 ) {
         //out.mute();
         stopStepSequencer();
         println("Try to copy from" + cubeNumber1 + "to" + cubeNumber2);
-        
-        byte [] b = loadBytes( cubeNumber1 + ".wav"); 
+
+        byte [] b = loadBytes( cubeNumber1 + ".wav");
         saveBytes(cubeNumber2 + ".wav", b);
         refreshSampleBuffer(cubeNumber2);
-        
+
         byte [] bytes = { hash, star, byte(cubeNumber1), byte(cubeNumber2) };
         sendSerial(bytes);
         startCopying = false;
@@ -104,25 +93,21 @@ class Worker extends Thread
 //start recording sound
 //---------------------------------------------------------------------
 
-    public void startRecording()
-    {
-        if( cubesState[cubeToRecord] )
-        {
+    public void startRecording() {
+        if ( cubesState[cubeToRecord] ) {
             distanceReferenceArray[cubeToRecord] = distanceArray[cubeToRecord];
+        } else {
+            distanceReferenceArray[cubeToRecord] = DEFAULTDISTANCEREFERENCE;
         }
-        else{
-            distanceReferenceArray[cubeToRecord] = DEFAULTDISTANCEREFERENCE;  
-        }  
-        
+
         recorder = minim.createRecorder(in, cubes[cubeToRecord] + ".wav", true);
         recordingTime = millis();
         println("Recording! Psst!! -- Next Volume:");
         recorder.beginRecord();
         recording = true;
         recordingTime = millis();
-        
-        if( recording )
-        {
+
+        if ( recording ) {
             byte [] bytes = {hash, lBracket, lastTriggeredCube};
             sendSerial(bytes);
         }
@@ -132,25 +117,21 @@ class Worker extends Thread
 
 //---------------------------------------------------------------------
 
-    void checkBooleans()
-    {
-        if ( recordVoice )
-        {
+    void checkBooleans() {
+        if ( recordVoice ) {
             startRecording();
         }
-        if( endRecordingVoice )
-        {
+        if ( endRecordingVoice ) {
             endRecording();
         }
-        if( startCopying ){
+        if ( startCopying ) {
             copyCubes( copyCubeNr1, copyCubeNr2 );
         }
     }
 
 //---------------------------------------------------------------------
 
-    void endRecording()
-    {
+    void endRecording() {
         recorder.endRecord();
         println("Done recording.");
         recorder.save();
@@ -169,8 +150,7 @@ class Worker extends Thread
 //---------------------------------------------------------------------
 
     //set up to 6 Timers:
-    void wait( int _waitTime, int _numberOfIndex )
-    {
+    void wait( int _waitTime, int _numberOfIndex ) {
         waitTime[_numberOfIndex] = _waitTime;
         currentTime[_numberOfIndex] = millis();
     }
@@ -178,15 +158,12 @@ class Worker extends Thread
 //---------------------------------------------------------------------
 
     //check Time:
-    boolean checkTimers( int _index )
-    {
+    boolean checkTimers( int _index ) {
         boolean isTimePassed = millis() - currentTime[_index] >= waitTime[_index];
-        if( isTimePassed )
-        {
+        if ( isTimePassed ) {
             currentTime[_index] = millis();
             return true;
-        }else
-        {
+        } else {
             return false;
         }
     }
