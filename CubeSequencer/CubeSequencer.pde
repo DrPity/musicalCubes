@@ -196,10 +196,14 @@ void serialEvent( Serial myPort ) {
             //recording cube
             if ( payloadByte == lBracket && !boxIsTapped ) {
                 println("Recording Triggered");
-                boxIsTapped = true;
-                sleepTime = millis();
+                
                 cubeToRecord = myPort.read();
                 lastTriggeredCube = (byte) cubeToRecord;
+                sleepTime = millis();
+                //TODO: A delay so that the recording isn't triggerred by the sound of tapping the cube.
+                delay(400);// while(millis() - sleepTime < 2000){};
+                sleepTime = millis();
+                boxIsTapped = true;
             }
 
             //trigger cube

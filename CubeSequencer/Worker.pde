@@ -67,7 +67,7 @@ class Worker extends Thread {
     public void refreshSampleBuffer(int cubeNumber) {
 
         minim.loadFileIntoBuffer(cubeNumber + ".wav", sampleBuffer.get(cubeNumber));
-        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), cubeSamples.get(cubeNumber).sampleRate());
+        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), DEFAULTSAMPLERATE);//cubeSamples.get(cubeNumber).sampleRate());
 
     }
 
@@ -83,6 +83,8 @@ class Worker extends Thread {
         byte [] b = loadBytes( cubeNumber1 + ".wav");
         saveBytes(cubeNumber2 + ".wav", b);
         refreshSampleBuffer(cubeNumber2);
+
+        sleep(2000);
 
         byte [] bytes = { hash, star, byte(cubeNumber1), byte(cubeNumber2) };
         sendSerial(bytes);
