@@ -24,6 +24,8 @@ public class CubeSequencer extends PApplet {
 
 // TODO: Check the use of distanceReferenceArray!!!!!
 
+//TODO: Have a delay for the copying
+
 
 
 
@@ -216,10 +218,14 @@ public void serialEvent( Serial myPort ) {
             //recording cube
             if ( payloadByte == lBracket && !boxIsTapped ) {
                 println("Recording Triggered");
-                boxIsTapped = true;
-                sleepTime = millis();
+                
                 cubeToRecord = myPort.read();
                 lastTriggeredCube = (byte) cubeToRecord;
+                sleepTime = millis();
+                //TODO: A delay so that the recording isn't triggerred by the sound of tapping the cube.
+                delay(400);// while(millis() - sleepTime < 2000){};
+                sleepTime = millis();
+                boxIsTapped = true;
             }
 
             //trigger cube
@@ -501,7 +507,7 @@ class Worker extends Thread {
     public void refreshSampleBuffer(int cubeNumber) {
 
         minim.loadFileIntoBuffer(cubeNumber + ".wav", sampleBuffer.get(cubeNumber));
-        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), cubeSamples.get(cubeNumber).sampleRate());
+        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), DEFAULTSAMPLERATE);//cubeSamples.get(cubeNumber).sampleRate());
 
     }
 
@@ -517,6 +523,8 @@ class Worker extends Thread {
         byte [] b = loadBytes( cubeNumber1 + ".wav");
         saveBytes(cubeNumber2 + ".wav", b);
         refreshSampleBuffer(cubeNumber2);
+
+        sleep(2000);
 
         byte [] bytes = { hash, star, PApplet.parseByte(cubeNumber1), PApplet.parseByte(cubeNumber2) };
         sendSerial(bytes);
