@@ -2,6 +2,8 @@
 
 // TODO: Check the use of distanceReferenceArray!!!!!
 
+//TODO: Have a delay for the copying
+
 
 
 
@@ -30,10 +32,12 @@ int       averageBpm                =   0;
 int       recordingTime             =   0;
 int       sleepTime                 =   0;
 int       bufferLength              =   3;
+int[]     triggerColors             =   {30,140,230,110,20,170};
 int[]     cubes                     =   new int [8];
 int[]     distanceArray             =   new int [8];
+int[]     currentColorOf            =   new int [8];
 int[]     currentSemitoneOf         =   new int [8];
-float[]     currentSampleRateOf       =   new float [8];
+float[]   currentSampleRateOf     =   new float [8];
 int[]     distanceReferenceArray    =   new int [8];
 int[]     semitones                 =   { -5, -2, 0, 2, 5, 7};
 int       inByte                    =   0;
@@ -206,6 +210,9 @@ void serialEvent( Serial myPort ) {
                 lastTriggeredCube = (byte)  cube;
                 int value = myPort.read();
                 startBeat(cube, value);
+
+                distanceArray[cube] = value;
+                setPitchShift( cube );
             }
 
             //trigger cube off
@@ -214,6 +221,7 @@ void serialEvent( Serial myPort ) {
 
                 int cube = myPort.read();
                 stopBeat(cube);
+                currentSemitoneOf[cube] = -1000;// This is to make sure color is sent when triggering after cube is turned of.                
                 byte [] bytes = {hash, bkSlash, byte(cube)};
                 sendSerial(bytes);
             }
@@ -258,10 +266,10 @@ void startBeat( int cubeNumber, int value ) {
         cubesState[cubeNumber] = true;
     }
 
-    distanceArray[cubeNumber] = value;
-    if ( cubesState[cubeNumber] ) {
-        setPitchShift( cubeNumber );
-    }
+    // distanceArray[cubeNumber] = value;
+    // if ( cubesState[cubeNumber] ) {
+        
+    // }
 }
 
 //---------------------------------------------------------------------
@@ -314,27 +322,34 @@ void startStepSequencer() {
 
 
 void setPitchShift( int cubeNumber ) {
-    int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length - 1);
-    println("seeting scaleposiition for " + cubeNumber + " to " + scalePosition);
+    int   scalePosition = (int) map (distanceArray[cubeNumber], 0, 255, 0, semitones.length);
+    // println("seeting scaleposiition for " + cubeNumber + " to " + scalePosition);
     int   semitone   = semitones[scalePosition];
     if (semitone == currentSemitoneOf[cubeNumber]) { //If we needn't change the pitch then exit this function
         return;
     }
     currentSemitoneOf[cubeNumber] = semitone;
+    println("setting semitone of " + cubeNumber + " to " + semitone);
     float   noteHz      = exp( semitone * log(2) / 12 ) * ( DEFAULTSAMPLERATE );
-    float   colorCube   = map (scalePosition, 0, semitones.length, 25, 230);
+    int   colorCube   = triggerColors[scalePosition];
+    currentColorOf[cubeNumber] = colorCube;
+    // int colorCube =0;
+    // if(scalePosition % 2 == 0){
+    //     colorCube = 0;
+    // }else{
+    //     colorCube = 128;
+    // }
     // println("note: "+note);
     if (semitone == 0) {
 //        cubeSamples.get(cubeNumber).setSampleRate(DEFAULTSAMPLERATE);
         currentSampleRateOf[cubeNumber] = DEFAULTSAMPLERATE;
-        println("cube [ " + cubeNumber + " ]" + DEFAULTSAMPLERATE);
+        println("cube [ " + cubeNumber + " ]" + "new sampleRate: "  + DEFAULTSAMPLERATE);
     } else if (semitone != 0) {
 //        cubeSamples.get(cubeNumber).setSampleRate(noteHz);
         currentSampleRateOf[cubeNumber] = noteHz;
         println("cube [ " + cubeNumber + " ] " + "new sampleRate: " + noteHz + "Hz");
     }
 
-    //TODO: Check if this are the right commands to be send
     byte [] bytes = {hash, questionMark, byte(cubeNumber), byte(colorCube)};
     sendSerial(bytes);
 }
