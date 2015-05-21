@@ -49,7 +49,7 @@ ArrayList<MultiChannelBuffer> sampleBuffer;
 
 //---------------------------------------------------------------------
 
-int       cubeToRecord              =   0;
+byte       cubeToRecord              =   0;
 int       averageBpm                =   0;
 int       recordingTime             =   0;
 int       sleepTime                 =   0;
@@ -78,7 +78,7 @@ byte      exPr                      =   33;
 byte      gtThan                    =   62;
 byte      questionMark              =   63;
 
-float     volumeTreshold            =   80;
+float     volumeTreshold            =   70;
 float     volumeMix                 =   0;
 
 //Debugging
@@ -173,8 +173,6 @@ public void draw() {
     volumeMix = PApplet.parseInt(volumeMix * 1000);
 
     if ( boxIsTapped ) {
-        out.mute();
-        stopStepSequencer();
         waitForVolumeTreshold();
     }
 
@@ -219,12 +217,14 @@ public void serialEvent( Serial myPort ) {
             if ( payloadByte == lBracket && !boxIsTapped ) {
                 println("Recording Triggered");
                 
-                cubeToRecord = myPort.read();
-                lastTriggeredCube = (byte) cubeToRecord;
+                cubeToRecord = (byte) myPort.read();
+                // lastTriggeredCube = (byte) cubeToRecord;
                 sleepTime = millis();
                 //TODO: A delay so that the recording isn't triggerred by the sound of tapping the cube.
-                delay(400);// while(millis() - sleepTime < 2000){};
+                // delay(400);// while(millis() - sleepTime < 2000){};
                 sleepTime = millis();
+                 out.mute();
+                stopStepSequencer();
                 boxIsTapped = true;
             }
 
@@ -265,7 +265,7 @@ public void serialEvent( Serial myPort ) {
 //---------------------------------------------------------------------
 
 public void waitForVolumeTreshold() {
-    if ((millis() - sleepTime) <= 8000) {
+    if ((millis() - sleepTime) <= 5000) {
         if (volumeMix >= volumeTreshold) {
             println("Treshold Reached:");
             boxIsTapped = false;
@@ -274,7 +274,7 @@ public void waitForVolumeTreshold() {
     } else {
         //send "recording timeout" to Arduino
         println("Timeout");
-        byte [] bytes = { hash, exPr, lastTriggeredCube };
+        byte [] bytes = { hash, exPr, cubeToRecord };
         sendSerial(bytes);
         boxIsTapped = false;
         startStepSequencer();
@@ -550,7 +550,7 @@ class Worker extends Thread {
         recordingTime = millis();
 
         if ( recording ) {
-            byte [] bytes = {hash, lBracket, lastTriggeredCube};
+            byte [] bytes = {hash, lBracket, cubeToRecord};
             sendSerial(bytes);
         }
 
@@ -580,7 +580,7 @@ class Worker extends Thread {
         println("Done saving.");
         recording = false;
         refreshSampleBuffer(cubeToRecord);
-        byte [] bytes = {hash, rBracket, lastTriggeredCube};
+        byte [] bytes = {hash, rBracket, cubeToRecord};
         sendSerial(bytes);
         startStepSequencer();
         myPort.clear();

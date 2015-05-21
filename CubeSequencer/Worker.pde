@@ -110,7 +110,7 @@ class Worker extends Thread {
         recordingTime = millis();
 
         if ( recording ) {
-            byte [] bytes = {hash, lBracket, lastTriggeredCube};
+            byte [] bytes = {hash, lBracket, cubeToRecord};
             sendSerial(bytes);
         }
 
@@ -140,7 +140,7 @@ class Worker extends Thread {
         println("Done saving.");
         recording = false;
         refreshSampleBuffer(cubeToRecord);
-        byte [] bytes = {hash, rBracket, lastTriggeredCube};
+        byte [] bytes = {hash, rBracket, cubeToRecord};
         sendSerial(bytes);
         startStepSequencer();
         myPort.clear();
