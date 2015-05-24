@@ -102,17 +102,15 @@ class Worker extends Thread {
             distanceReferenceArray[cubeToRecord] = DEFAULTDISTANCEREFERENCE;
         }
 
+        byte [] bytes = {hash, lBracket, cubeToRecord};
+        sendSerial(bytes);
+
         recorder = minim.createRecorder(in, cubes[cubeToRecord] + ".wav", true);
         recordingTime = millis();
         println("Recording! Psst!! -- Next Volume:");
         recorder.beginRecord();
         recording = true;
         recordingTime = millis();
-
-        if ( recording ) {
-            byte [] bytes = {hash, lBracket, cubeToRecord};
-            sendSerial(bytes);
-        }
 
         recordVoice = false;
     }
