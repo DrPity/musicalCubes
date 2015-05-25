@@ -67,7 +67,7 @@ class Worker extends Thread {
     public void refreshSampleBuffer(int cubeNumber) {
 
         minim.loadFileIntoBuffer(cubeNumber + ".wav", sampleBuffer.get(cubeNumber));
-        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), cubeSamples.get(cubeNumber).sampleRate());
+        cubeSamples.get(cubeNumber).setSample(sampleBuffer.get(cubeNumber), DEFAULTSAMPLERATE);//cubeSamples.get(cubeNumber).sampleRate());
 
     }
 
@@ -83,6 +83,8 @@ class Worker extends Thread {
         byte [] b = loadBytes( cubeNumber1 + ".wav");
         saveBytes(cubeNumber2 + ".wav", b);
         refreshSampleBuffer(cubeNumber2);
+
+        sleep(2000);
 
         byte [] bytes = { hash, star, byte(cubeNumber1), byte(cubeNumber2) };
         sendSerial(bytes);
@@ -100,17 +102,15 @@ class Worker extends Thread {
             distanceReferenceArray[cubeToRecord] = DEFAULTDISTANCEREFERENCE;
         }
 
+        byte [] bytes = {hash, lBracket, cubeToRecord};
+        sendSerial(bytes);
+
         recorder = minim.createRecorder(in, cubes[cubeToRecord] + ".wav", true);
         recordingTime = millis();
         println("Recording! Psst!! -- Next Volume:");
         recorder.beginRecord();
         recording = true;
         recordingTime = millis();
-
-        if ( recording ) {
-            byte [] bytes = {hash, lBracket, lastTriggeredCube};
-            sendSerial(bytes);
-        }
 
         recordVoice = false;
     }
@@ -138,7 +138,7 @@ class Worker extends Thread {
         println("Done saving.");
         recording = false;
         refreshSampleBuffer(cubeToRecord);
-        byte [] bytes = {hash, rBracket, lastTriggeredCube};
+        byte [] bytes = {hash, rBracket, cubeToRecord};
         sendSerial(bytes);
         startStepSequencer();
         myPort.clear();
