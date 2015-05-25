@@ -83,12 +83,13 @@ void setup() {
         println("[" + i + "]" + Serial.list()[i]);
     }
 
-    myPort  = new Serial(this, Serial.list()[0], 9600);
+    myPort  = new Serial(this, Serial.list()[1], 9600);
+    myPort.clear();
+    myPort.bufferUntil('\n');
     minim   = new Minim(this);
     worker  = new Worker(1);
     worker.start();
-    myPort.clear();
-    myPort.bufferUntil('\n');
+ 
 
     //16 bit 44100khz sample buffer 512 stereo;
     in  = minim.getLineIn(Minim.STEREO, 1024);
