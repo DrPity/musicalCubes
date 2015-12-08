@@ -12,7 +12,7 @@ class Sequencer implements Instrument {
             // byte   colorCube   = (byte) map (currentSemitoneOf[beat], 0, semitones.length, 25, 230);
             byte [] bytes = {hash, frSlash, byte(cubes[beat]), byte(currentColorOf[beat])};
             sendSerial(bytes);
-            println("---------------------sent trigger for cube " + beat);
+            //println("---------------------sent trigger for cube " + beat);
         }
     }
 

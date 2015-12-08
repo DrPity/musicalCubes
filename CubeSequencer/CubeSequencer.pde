@@ -1,11 +1,4 @@
-
-
-// TODO: Check the use of distanceReferenceArray!!!!!
-
-//TODO: Have a delay for the copying
-
-
-
+// TODO: Check the use of distanceReferenceArray, have a delay for the copying
 
 
 import ddf.minim.*;
@@ -89,7 +82,7 @@ void setup() {
     minim   = new Minim(this);
     worker  = new Worker(1);
     worker.start();
- 
+
 
     //16 bit 44100khz sample buffer 512 stereo;
     in  = minim.getLineIn(Minim.STEREO, 1024);
@@ -195,7 +188,7 @@ void serialEvent( Serial myPort ) {
             //recording cube
             if ( payloadByte == lBracket && !boxIsTapped ) {
                 println("Recording Triggered");
-                
+
                 cubeToRecord = (byte) myPort.read();
                 // lastTriggeredCube = (byte) cubeToRecord;
                 sleepTime = millis();
@@ -226,7 +219,7 @@ void serialEvent( Serial myPort ) {
 
                 int cube = myPort.read();
                 stopBeat(cube);
-                currentSemitoneOf[cube] = -1000;// This is to make sure color is sent when triggering after cube is turned of.                
+                currentSemitoneOf[cube] = -1000;// This is to make sure color is sent when triggering after cube is turned of.
                 byte [] bytes = {hash, bkSlash, byte(cube)};
                 sendSerial(bytes);
             }
@@ -273,7 +266,7 @@ void startBeat( int cubeNumber, int value ) {
 
     // distanceArray[cubeNumber] = value;
     // if ( cubesState[cubeNumber] ) {
-        
+
     // }
 }
 
